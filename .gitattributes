@@ -1,0 +1,21 @@
+# 统一行尾为 LF，与平台无关。
+#
+# 不加这个文件的话，Windows 上 core.autocrlf=true 会把文件以 CRLF 存进仓库，
+# 于是 Linux / macOS 的贡献者克隆下来后每个文件都显示「已修改」，
+# diff 里全是行尾差异。仓库内统一 LF 能彻底避免这类噪音。
+
+* text=auto eol=lf
+
+# 二进制资源不要做行尾转换，也不要尝试 diff
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
+*.exe binary
+
+# Cargo.lock 由 cargo 生成，参与 diff 没有意义
+Cargo.lock -diff
+
+# 这些文件用 LF 是硬要求
+*.sh text eol=lf
+*.mjs text eol=lf

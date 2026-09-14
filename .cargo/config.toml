@@ -1,0 +1,16 @@
+# Cargo 配置 —— 仅作用于本项目，且只包含平台无关的设置。
+#
+# 刻意**不放镜像源**：镜像属于「某台机器 / 某个网络环境」的配置，
+# 写进仓库会把所有贡献者都指向第三方源。需要镜像请配在用户级
+# `~/.cargo/config.toml`，参见 CONTRIBUTING.md 的「中国大陆网络」一节。
+
+[net]
+# 有 git 依赖时用系统 git 拉取，避免 cargo 内置实现带来的凭证 / 代理问题。
+git-fetch-with-cli = true
+
+[cache]
+# 关闭注册表缓存的自动清理。
+# 新版 cargo 会在构建时清理「最近未使用」的 registry/src 目录，
+# 而删除 windows-0.58.0 这类超大 crate 目录在 Windows + Defender 下
+# 会耗时数分钟，表现为构建「卡死」且没有任何输出。
+auto-clean-frequency = "never"

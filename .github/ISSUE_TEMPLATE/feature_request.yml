@@ -1,0 +1,49 @@
+name: 功能建议
+description: 希望增加或改进某个功能
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        在提之前，建议先看一眼 README 的「后续可扩展功能」一节，
+        里面已经列了一些有意为之的方向，以及一些**明确不做**的事情。
+
+        > Port Killer 的定位是「轻、快、美观、无学习成本」的端口释放工具。
+        > 它**不是**系统监控器 / 任务管理器 —— 偏这个方向的建议通常会被拒绝，
+        > 除非能说明它如何服务于「快速释放被占用的端口」这个唯一目标。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你遇到的实际问题
+      description: 请描述场景，而不是直接给方案。「我想要 X 按钮」不如「我在 Y 情况下卡住了」
+      placeholder: |
+        例如：我经常同时开着好几个 dev server，
+        每次都要先想起来是哪个端口被占了，再一个个查。
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你期望的方案
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 你考虑过的替代方案
+      description: 现在是怎么绕过这个问题的？
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 确认
+      options:
+        - label: 我已搜索过现有 Issue，没有重复
+          required: true
+        - label: 这个建议服务于「快速释放被占用的端口」，而不是把程序做成系统监控器
+          required: true

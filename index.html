@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>端口终结者</title>
+    <!--
+      这里刻意不放内联主题脚本：
+      Tauri 只会给「带 src 的脚本」和 <style> 注入 CSP nonce，
+      内联脚本会被严格 CSP 拦截。主题改由 main.tsx 在首帧前应用，
+      闪烁问题由 styles.css 里的 prefers-color-scheme 兜底。
+    -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  # 本项目在受限网络下开发，cargo 走 rsproxy 稀疏镜像；CI 上沿用同一份配置，
+  # 避免出现「本地能构建、CI 拉不到依赖」的分裂。
+  CARGO_NET_RETRY: 5
+
+jobs:
+  frontend:
+    name: 前端（类型 / Lint / 格式 / 构建）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Prettier 格式检查
+        run: npm run format:check
+
+      # 缺 key 时 i18next 会静默回退到 fallback 语言，界面不报错 ——
+      # 只有切到那种语言才看得出来。这里把它变成硬失败。
+      - name: 语言文件一致性
+        run: npm run i18n:check
+
+      - name: 生产构建
+        run: npx vite build
+
+  rust-linux:
+    name: Rust（Linux 编译 + 测试）
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Tauri 系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libgtk-3-dev \
+            libxdo-dev \
+            libssl-dev \
+            patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: rustfmt
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: 测试
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  rust-windows:
+    name: Rust（Windows 原生测试）
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: rustfmt
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      # 原生集成测试会真的起监听端口、真的终结进程、真的复查端口是否释放，
+      # 所以必须跑在真实 Windows 上，不能只靠 Linux 交叉编译。
+      - name: 测试
+        run: cargo test --manifest-path src-tauri/Cargo.toml

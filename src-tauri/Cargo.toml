@@ -1,0 +1,50 @@
+[package]
+name = "port-killer"
+version = "0.1.0"
+description = "端口终结者 / Port Killer —— 快速释放被占用的开发端口"
+authors = ["Port Killer"]
+edition = "2021"
+rust-version = "1.77"
+license = "MIT"
+
+[lib]
+# Tauri 移动端需要 cdylib/staticlib，桌面端需要 rlib。
+name = "port_killer_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.4.1", features = [] }
+
+[dependencies]
+tauri = { version = "2.8.5", features = [] }
+serde = { version = "1.0.226", features = ["derive"] }
+thiserror = "2.0.12"
+sysinfo = "0.34.2"
+
+[dev-dependencies]
+# 只在测试里用（断言序列化后的 JSON 形状：可选字段不输出 null、
+# 状态枚举转小写）。放到这里而不是 [dependencies]，
+# 是为了让运行时依赖清单如实反映「程序真正需要什么」。
+serde_json = "1.0.133"
+
+# ---- Windows：直接调用 Win32 API，不经过任何 shell ----
+# 用 windows-sys（raw FFI）而非 windows（包装类型）：
+# 这里只需要 4 个 Win32 符号，raw 绑定更少间接层、编译更快、也更好审查。
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59.0", features = [
+    "Win32_Foundation",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_Networking_WinSock",
+    "Win32_System_Threading",
+] }
+
+# ---- macOS / Linux：POSIX 信号 ----
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.189"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

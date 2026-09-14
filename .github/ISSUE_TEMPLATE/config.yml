@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全问题
+    url: https://github.com/zazahui98/port-killer/security/advisories/new
+    about: 请勿公开提交安全漏洞，改用私密报告渠道（详见 SECURITY.md）
+  - name: 使用问题 / 讨论
+    url: https://github.com/zazahui98/port-killer/discussions
+    about: 不确定是不是 Bug，或想聊聊用法，来这里

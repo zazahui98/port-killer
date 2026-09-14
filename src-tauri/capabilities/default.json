@@ -1,0 +1,21 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "端口终结者主窗口的权限集。应用只通过自定义 IPC 命令与原生层通信，不加载任何插件；下面放开的全部是窗口自身的行为（自绘标题栏 + 置顶），逐条注明用途，保持最小必要。",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-close",
+
+    "core:window:allow-set-theme",
+    "core:window:allow-set-background-color",
+
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-is-always-on-top"
+  ]
+}

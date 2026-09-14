@@ -1,0 +1,79 @@
+name: 报告 Bug
+description: 程序行为不符合预期，或出现崩溃 / 报错
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。为了能快速定位，请尽量把下面的信息填完整。
+
+        > 如果是**安全问题**，请不要在这里提交，改用仓库 Security 标签页的
+        > 「Report a vulnerability」。
+
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本
+      description: 在「设置」面板里可以看到，或使用 release 页的版本号
+      placeholder: 例如 0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS
+        - Linux
+        - 其它（请在下方补充）
+    validations:
+      required: true
+
+  - type: dropdown
+    id: elevated
+    attributes:
+      label: 是否以管理员 / root 权限运行
+      description: 普通权限只能终结当前用户自己的进程
+      options:
+        - 否，普通权限
+        - 是，管理员 / root
+        - 不确定
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 输入端口 3000
+        2. 点击「终结进程」
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 如果界面上有错误提示，请把原文贴上来
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 补充信息
+      description: 截图、日志、目标进程是什么（node / java / …）等
+    validations:
+      required: false

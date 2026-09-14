@@ -1,0 +1,309 @@
+@import "tailwindcss";
+
+/* Tailwind 4 默认按 prefers-color-scheme 切换暗色；
+   我们改为 class 驱动，以便支持「跟随系统 / 深色 / 浅色」三态。 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   设计令牌
+   —— 深色为优先设计目标，浅色为等价映射
+   ============================================================ */
+:root {
+  color-scheme: light;
+
+  --pk-bg: #f6f7f8;
+  --pk-surface: #ffffff;
+  --pk-elevated: #f1f2f4;
+  --pk-line: #e3e5e8;
+  --pk-line-strong: #d0d3d8;
+
+  --pk-fg: #16181c;
+  --pk-fg-muted: #5c6169;
+  --pk-fg-subtle: #8b9098;
+
+  --pk-accent: #2563eb;
+  --pk-accent-soft: rgba(37, 99, 235, 0.1);
+  --pk-accent-ring: rgba(37, 99, 235, 0.32);
+
+  --pk-danger: #c0414a;
+  --pk-danger-hover: #a8343d;
+  --pk-danger-soft: rgba(192, 65, 74, 0.09);
+
+  --pk-success: #12805c;
+  --pk-success-soft: rgba(18, 128, 92, 0.1);
+
+  --pk-warn: #9a6b12;
+  --pk-warn-soft: rgba(154, 107, 18, 0.09);
+
+  --pk-shadow-card:
+    0 1px 2px rgba(16, 18, 22, 0.05), 0 8px 24px -12px rgba(16, 18, 22, 0.14);
+  --pk-shadow-pop:
+    0 8px 16px -6px rgba(16, 18, 22, 0.12), 0 24px 48px -24px rgba(16, 18, 22, 0.24);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --pk-bg: #0b0c0e;
+  --pk-surface: #14161a;
+  --pk-elevated: #1b1e23;
+  --pk-line: #262a31;
+  --pk-line-strong: #363b44;
+
+  --pk-fg: #e9ebef;
+  --pk-fg-muted: #9ba1ab;
+  --pk-fg-subtle: #6c727d;
+
+  --pk-accent: #6ea8fe;
+  --pk-accent-soft: rgba(110, 168, 254, 0.12);
+  --pk-accent-ring: rgba(110, 168, 254, 0.36);
+
+  --pk-danger: #d9616b;
+  --pk-danger-hover: #e5747d;
+  --pk-danger-soft: rgba(217, 97, 107, 0.12);
+
+  --pk-success: #4bbd97;
+  --pk-success-soft: rgba(75, 189, 151, 0.12);
+
+  --pk-warn: #d7a63f;
+  --pk-warn-soft: rgba(215, 166, 63, 0.13);
+
+  --pk-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -14px rgba(0, 0, 0, 0.7);
+  --pk-shadow-pop:
+    0 12px 24px -8px rgba(0, 0, 0, 0.55), 0 32px 64px -32px rgba(0, 0, 0, 0.85);
+}
+
+/* 「跟随系统」的兜底：<html> 上没有任何 class 时按系统外观走。
+   这段令牌与 .dark 重复是刻意的 —— 纯 CSS 没法在不引入预处理器的前提下
+   复用一组自定义属性声明，而把主题完全交给 JS 应用又会在首帧前闪一下白。
+   用户显式选择浅色时会带上 .light，:not(.light) 保证系统深色不会覆盖它。 */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+
+    --pk-bg: #0b0c0e;
+    --pk-surface: #14161a;
+    --pk-elevated: #1b1e23;
+    --pk-line: #262a31;
+    --pk-line-strong: #363b44;
+
+    --pk-fg: #e9ebef;
+    --pk-fg-muted: #9ba1ab;
+    --pk-fg-subtle: #6c727d;
+
+    --pk-accent: #6ea8fe;
+    --pk-accent-soft: rgba(110, 168, 254, 0.12);
+    --pk-accent-ring: rgba(110, 168, 254, 0.36);
+
+    --pk-danger: #d9616b;
+    --pk-danger-hover: #e5747d;
+    --pk-danger-soft: rgba(217, 97, 107, 0.12);
+
+    --pk-success: #4bbd97;
+    --pk-success-soft: rgba(75, 189, 151, 0.12);
+
+    --pk-warn: #d7a63f;
+    --pk-warn-soft: rgba(215, 166, 63, 0.13);
+
+    --pk-shadow-card:
+      0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -14px rgba(0, 0, 0, 0.7);
+    --pk-shadow-pop:
+      0 12px 24px -8px rgba(0, 0, 0, 0.55), 0 32px 64px -32px rgba(0, 0, 0, 0.85);
+  }
+}
+
+/* 把令牌暴露给 Tailwind 工具类：bg-bg / text-fg / border-line ... */
+@theme inline {
+  --color-bg: var(--pk-bg);
+  --color-surface: var(--pk-surface);
+  --color-elevated: var(--pk-elevated);
+  --color-line: var(--pk-line);
+  --color-line-strong: var(--pk-line-strong);
+
+  --color-fg: var(--pk-fg);
+  --color-fg-muted: var(--pk-fg-muted);
+  --color-fg-subtle: var(--pk-fg-subtle);
+
+  --color-accent: var(--pk-accent);
+  --color-accent-soft: var(--pk-accent-soft);
+  --color-danger: var(--pk-danger);
+  --color-danger-hover: var(--pk-danger-hover);
+  --color-danger-soft: var(--pk-danger-soft);
+  --color-success: var(--pk-success);
+  --color-success-soft: var(--pk-success-soft);
+  --color-warn: var(--pk-warn);
+  --color-warn-soft: var(--pk-warn-soft);
+
+  --radius-card: 14px;
+  --radius-field: 12px;
+
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono:
+    "JetBrains Mono", "SF Mono", "Cascadia Code", "Consolas", "Menlo",
+    "Liberation Mono", monospace;
+}
+
+/* ============================================================
+   基础样式
+   ============================================================ */
+@layer base {
+  * {
+    /* 桌面工具不需要文字选择，但输入框与命令行需要保留 */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--pk-bg);
+    color: var(--pk-fg);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* 桌面端：禁止整页拖拽与滚动回弹，由内部区域自行滚动 */
+    overflow: hidden;
+    user-select: none;
+    cursor: default;
+  }
+
+  input,
+  textarea {
+    user-select: text;
+  }
+
+  /* 统一的键盘焦点环：只在键盘导航时出现，不干扰鼠标点击 */
+  :focus-visible {
+    outline: 2px solid var(--pk-accent-ring);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* 滚动条：细、低对比，符合开发者工具审美 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--pk-line-strong);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--pk-fg-subtle);
+    background-clip: content-box;
+  }
+}
+
+/* ============================================================
+   动画 —— 克制、短促（150~250ms）
+   ============================================================ */
+@layer utilities {
+  @keyframes pk-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pk-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes pk-scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97) translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  @keyframes pk-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes pk-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes pk-pulse-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  .animate-fade-up {
+    animation: pk-fade-up 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-fade-in {
+    animation: pk-fade-in 180ms ease-out both;
+  }
+  .animate-scale-in {
+    animation: pk-scale-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-toast-in {
+    animation: pk-toast-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-spin-fast {
+    animation: pk-spin 700ms linear infinite;
+  }
+  .animate-pulse-soft {
+    animation: pk-pulse-soft 1.6s ease-in-out infinite;
+  }
+
+  /* 尊重系统「减少动态效果」设置 */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-up,
+    .animate-fade-in,
+    .animate-scale-in,
+    .animate-toast-in,
+    .animate-spin-fast,
+    .animate-pulse-soft {
+      animation: none !important;
+    }
+  }
+
+  /* 文本截断 */
+  .truncate-1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

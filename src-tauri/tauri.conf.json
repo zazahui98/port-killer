@@ -1,0 +1,59 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Port Killer",
+  "version": "0.1.0",
+  "identifier": "dev.portkiller.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "端口终结者",
+        "width": 480,
+        "height": 620,
+        "minWidth": 400,
+        "minHeight": 460,
+        "resizable": true,
+        "center": true,
+        "decorations": false,
+        "shadow": true,
+        "focus": true,
+        "backgroundColor": "#0b0c0e",
+        "dragDropEnabled": false,
+        "zoomHotkeysEnabled": false,
+        "additionalBrowserArgs": "--disable-features=msSmartScreenProtection"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'",
+      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 http://localhost:1420; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'",
+      "freezePrototype": true,
+      "capabilities": []
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "DeveloperTool",
+    "shortDescription": "快速释放被占用的开发端口",
+    "longDescription": "端口终结者（Port Killer）是一款面向开发者的轻量级端口管理工具：输入端口 → 查看占用进程 → 一键终结 → 端口释放。完全本地运行，不联网。",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "languages": ["SimpChinese", "English"],
+        "installMode": "currentUser"
+      }
+    }
+  }
+}
