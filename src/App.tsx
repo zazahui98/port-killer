@@ -17,9 +17,11 @@ import { useWindowChrome } from "./hooks/useWindowChrome";
 import { usePortSearch } from "./hooks/usePortSearch";
 import { usePortList } from "./hooks/usePortList";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop";
+import { useQuickPorts } from "./hooks/useQuickPorts";
 import { useTheme } from "./hooks/useTheme";
 import { getPlatform } from "./services/portService";
 import { parsePortInput, PORT_MAX, PORT_MIN } from "./utils/port";
+import { isMacOS } from "./utils/platform";
 import { presentError, type PortError, type PortProcess } from "./types/port";
 
 export function App() {
@@ -27,6 +29,7 @@ export function App() {
   const toast = useToast();
   const { mode, isDark, setMode } = useTheme();
   const { enabled: alwaysOnTop, toggle: toggleAlwaysOnTop } = useAlwaysOnTop();
+  const { enabled: showQuickPorts, toggle: toggleQuickPorts } = useQuickPorts();
   const chrome = useWindowChrome();
   const { state, setInput, submit, check, kill, reset } = usePortSearch();
   const portList = usePortList();
@@ -231,13 +234,20 @@ export function App() {
             value={state.input}
             onChange={setInput}
             onSubmit={submit}
+            onClear={handleReset}
             error={inputError}
             loading={state.phase === "CHECKING"}
           />
 
-          <div className="mt-1">
-            <QuickPorts activePort={state.port} onPick={handlePick} disabled={busy} />
-          </div>
+          {/*
+            常用端口可以整块关掉：这个工具的核心其实只有「输入端口」这一件事，
+            有人只想留输入框。关掉后省下的竖向空间留给结果区。
+          */}
+          {showQuickPorts && (
+            <div className="mt-1">
+              <QuickPorts activePort={state.port} onPick={handlePick} disabled={busy} />
+            </div>
+          )}
 
           {/* 结果区 */}
           {hasResult || queryError ? (
@@ -319,8 +329,8 @@ export function App() {
         theme={mode}
         isDark={isDark}
         onThemeChange={setMode}
-        alwaysOnTop={alwaysOnTop}
-        onToggleAlwaysOnTop={toggleAlwaysOnTop}
+        showQuickPorts={showQuickPorts}
+        onToggleQuickPorts={toggleQuickPorts}
         platform={platform}
       />
 
@@ -331,6 +341,8 @@ export function App() {
         onPickPort={handlePickFromList}
         onKill={requestKill}
         killingPid={state.killingPid}
+        onStartDrag={chrome.startDrag}
+        onToggleMaximize={chrome.toggleMaximizeOnDoubleClick}
       />
     </div>
   );
@@ -342,13 +354,48 @@ export function App() {
 function EmptyState() {
   const { t } = useTranslation();
 
+  // 表针式扫动：悬停时图标像钟表指针一样持续旋转，
+  // 移开后停在当前角度、不复位（角度只增不减）。
+  const [sweep, setSweep] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const lastRef = useRef(0);
+
+  const startSweep = useCallback(() => {
+    if (rafRef.current !== null) return; // 已在旋转中
+    lastRef.current = performance.now();
+    const tick = (now: number) => {
+      const dt = now - lastRef.current;
+      lastRef.current = now;
+      // 约 120°/秒，接近秒针的扫动速度
+      setSweep((prev) => (prev + dt * 0.12) % 360);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  const stopSweep = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  // 卸载时停掉动画，避免泄漏
+  useEffect(() => stopSweep, [stopSweep]);
+
   return (
     <div className="animate-fade-in flex flex-col items-center px-8 pt-10 pb-4 text-center">
       <span
         className="mb-3 flex size-11 items-center justify-center rounded-[14px] border border-line bg-surface"
+        onMouseEnter={startSweep}
+        onMouseLeave={stopSweep}
         aria-hidden
       >
-        <CircleSlash size={18} className="text-fg-subtle" />
+        <CircleSlash
+          size={18}
+          className="text-fg-subtle"
+          style={{ transform: `rotate(${sweep}deg)` }}
+        />
       </span>
       <p className="text-[13.5px] font-medium text-fg-muted">{t("empty.title")}</p>
       <p className="mt-1 max-w-[260px] text-[12px] leading-relaxed text-fg-subtle">
@@ -357,7 +404,7 @@ function EmptyState() {
 
       <div className="mt-6 flex items-center gap-1.5 text-[11px] text-fg-subtle">
         <kbd className="rounded border border-line bg-elevated px-1.5 py-0.5 font-mono">
-          ⌘K
+          {isMacOS() ? "⌘K" : "Ctrl K"}
         </kbd>
         <span>{t("empty.focusInput")}</span>
       </div>

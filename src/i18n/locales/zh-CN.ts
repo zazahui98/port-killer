@@ -149,12 +149,11 @@ export default {
       lightHint: "始终使用浅色主题",
     },
     offlineNote: "所有配置都保存在本机，应用完全离线运行。",
+    home: "主界面",
+    showQuickPorts: "显示常用端口",
+    showQuickPortsHint: "关闭后只保留输入框",
     language: "语言",
     languageAria: "界面语言",
-    window: "窗口",
-    pinHint: "让窗口始终浮在其它窗口之上",
-    about: "关于",
-    platform: "运行平台",
   },
 
   list: {

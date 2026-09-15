@@ -154,12 +154,11 @@ export default {
       lightHint: "Always use the light theme",
     },
     offlineNote: "Everything is stored locally and the app runs fully offline.",
+    home: "Home screen",
+    showQuickPorts: "Show common ports",
+    showQuickPortsHint: "Off leaves just the input box",
     language: "Language",
     languageAria: "Interface language",
-    window: "Window",
-    pinHint: "Keep the window above all other windows",
-    about: "About",
-    platform: "Platform",
   },
 
   list: {

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Check, Languages, Monitor, Moon, Pin, Sun } from "lucide-react";
+import { Check, Languages, LayoutGrid, Monitor, Moon, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Dialog } from "./ui/Dialog";
@@ -14,8 +14,8 @@ interface SettingsPanelProps {
   /** 当前实际生效的是否为深色（跟随系统时会随系统变化） */
   isDark: boolean;
   onThemeChange: (mode: ThemeMode) => void;
-  alwaysOnTop: boolean;
-  onToggleAlwaysOnTop: () => void;
+  showQuickPorts: boolean;
+  onToggleQuickPorts: () => void;
   platform: string;
 }
 
@@ -48,9 +48,12 @@ const THEME_OPTIONS: Array<{
 /**
  * 设置面板。
  *
- * 只放真正生效的选项：外观主题、界面语言、窗口置顶。
+ * 只放真正生效的选项：外观主题、界面语言、主界面显示哪些区块。
  * 未实现的能力（开机自启 / 托盘 / 全局快捷键）不在这里放占位开关 ——
  * 放着不能用的开关比没有更糟。
+ *
+ * 窗口置顶不在设置里：它是标题栏上的一个按钮，随手就能切，
+ * 再让它占一个设置项纯属重复。
  */
 export function SettingsPanel({
   open,
@@ -58,8 +61,8 @@ export function SettingsPanel({
   theme,
   isDark,
   onThemeChange,
-  alwaysOnTop,
-  onToggleAlwaysOnTop,
+  showQuickPorts,
+  onToggleQuickPorts,
   platform,
 }: SettingsPanelProps) {
   const { t } = useTranslation();
@@ -139,18 +142,18 @@ export function SettingsPanel({
 
       <fieldset className="mt-4">
         <legend className="mb-1.5 text-[11px] font-medium tracking-[0.06em] text-fg-subtle uppercase">
-          {t("settings.window")}
+          {t("settings.home")}
         </legend>
 
         <div className="flex flex-col gap-1">
           <OptionRow
-            active={alwaysOnTop}
+            active={showQuickPorts}
             role="checkbox"
-            ariaChecked={alwaysOnTop}
-            onClick={onToggleAlwaysOnTop}
-            icon={<Pin size={14} aria-hidden />}
-            label={t("header.pin")}
-            hint={t("settings.pinHint")}
+            ariaChecked={showQuickPorts}
+            onClick={onToggleQuickPorts}
+            icon={<LayoutGrid size={14} aria-hidden />}
+            label={t("settings.showQuickPorts")}
+            hint={t("settings.showQuickPortsHint")}
           />
         </div>
       </fieldset>

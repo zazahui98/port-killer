@@ -81,7 +81,31 @@ export function useWindowChrome(): WindowChromeApi {
   const startDrag = useCallback((event: React.MouseEvent) => {
     if (event.buttons !== 1) return; // 只响应左键
     if (onInteractiveElement(event)) return;
-    tryWindowCall((win) => win.startDragging());
+
+    // 不要在这里直接 startDragging：mousedown 一触发就发起系统级拖拽，
+    // 会接管指针并吞掉随后的 dblclick，导致「双击标题栏最大化」失效。
+    // 改成「按住并移动超过阈值才真正拖拽」——双击（原地不动）不会触发
+    // 拖拽，dblclick 得以正常派发，最大化/还原恢复；体验也更接近原生。
+    const startX = event.clientX;
+    const startY = event.clientY;
+
+    const cleanup = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+    const onMouseUp = () => cleanup();
+    const onMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (dx * dx + dy * dy >= 16) {
+        // 超过 4px 视为拖拽意图，发起系统拖拽
+        cleanup();
+        tryWindowCall((win) => win.startDragging());
+      }
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
   }, []);
 
   const toggleMaximizeOnDoubleClick = useCallback((event: React.MouseEvent) => {

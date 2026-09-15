@@ -1,7 +1,7 @@
 {
   "name": "port-killer",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "端口终结者 / Port Killer —— 快速释放被占用的开发端口",
   "scripts": {

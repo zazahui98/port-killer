@@ -1,5 +1,5 @@
 import { forwardRef, useId, type KeyboardEvent } from "react";
-import { CornerDownLeft, Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PORT_MAX, PORT_MIN } from "../utils/port";
 
@@ -7,6 +7,8 @@ interface PortInputProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  /** 点击清除叉号时清空输入 */
+  onClear?: () => void;
   /** 校验错误文案（为空表示无错误） */
   error?: string;
   loading?: boolean;
@@ -21,7 +23,7 @@ interface PortInputProps {
  */
 export const PortInput = forwardRef<HTMLInputElement, PortInputProps>(
   function PortInput(
-    { value, onChange, onSubmit, error, loading = false, disabled },
+    { value, onChange, onSubmit, onClear, error, loading = false, disabled },
     ref,
   ) {
     const inputId = useId();
@@ -91,19 +93,17 @@ export const PortInput = forwardRef<HTMLInputElement, PortInputProps>(
                 aria-hidden
               />
             )}
-            {/* ↵ 提示：有内容时强调，空态保持安静 */}
-            <kbd
-              aria-hidden
-              className={[
-                "flex size-6 items-center justify-center rounded-md border text-[11px]",
-                "transition-colors duration-150",
-                value && !loading
-                  ? "border-accent/40 bg-accent-soft text-accent"
-                  : "border-line bg-elevated text-fg-subtle",
-              ].join(" ")}
-            >
-              <CornerDownLeft size={12} />
-            </kbd>
+            {/* 清除叉号：有内容时才出现，鼠标悬停变红（与端口列表一致） */}
+            {value && !loading && onClear && (
+              <button
+                type="button"
+                onClick={onClear}
+                aria-label={t("action.clear")}
+                className="shrink-0 rounded p-0.5 text-fg-subtle transition-colors duration-150 hover:text-danger"
+              >
+                <X size={13} aria-hidden />
+              </button>
+            )}
           </div>
         </div>
 
