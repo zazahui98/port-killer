@@ -24,6 +24,24 @@ pub use error::{PortError, PortResult};
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            // 窗口是 `visible: false` 创建的，由前端在首帧画完后调用 `show()`，
+            // 这样用户不会看到一个还没画内容的空窗口（「开屏黑屏」）。
+            //
+            // 但前端一旦加载失败，窗口就永远不会出现 —— 那比黑屏更糟。
+            // 所以这里加一道兜底：超时后无条件显示窗口，
+            // 此时用户至少能看到 index.html 里的启动占位界面。
+            use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(3));
+                    if !window.is_visible().unwrap_or(true) {
+                        let _ = window.show();
+                    }
+                });
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::check_port,
             commands::list_ports,

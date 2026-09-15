@@ -10,9 +10,40 @@
       内联脚本会被严格 CSP 拦截。主题改由 main.tsx 在首帧前应用，
       闪烁问题由 styles.css 里的 prefers-color-scheme 兜底。
     -->
+    <style>
+      /*
+        启动占位界面。
+        窗口是 visible: false 创建的，前端在首帧画完后才显示它，
+        所以正常情况下这段内容一闪而过、根本看不到。
+        只有当 Rust 侧的超时兜底把窗口显示出来时（前端加载失败）
+        用户才会看到它 —— 那时显示应用标识，好过一个空白窗口。
+        React 挂载时会清空 #root，这段内容随之消失，无需手动移除。
+      */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      .pk-launch {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #0b0c0e;
+        color: #e9ebef;
+        font: 500 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+        letter-spacing: -0.01em;
+      }
+      @media (prefers-color-scheme: light) {
+        .pk-launch {
+          background: #f6f7f8;
+          color: #16181c;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="pk-launch">端口终结者</div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
