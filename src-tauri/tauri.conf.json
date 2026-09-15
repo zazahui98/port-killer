@@ -22,6 +22,7 @@
         "center": true,
         "decorations": false,
         "shadow": true,
+        "visible": false,
         "focus": true,
         "backgroundColor": "#0b0c0e",
         "dragDropEnabled": false,

@@ -24,6 +24,24 @@ pub use error::{PortError, PortResult};
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            // 窗口以 `visible: false` 创建，由前端在首帧画完后调用 `show()`，
+            // 这样用户不会看到一个还没画内容的空窗口。
+            //
+            // 兜底：前端一旦加载失败，窗口就永远不会出现 —— 那比闪一下更糟。
+            // 超时后**无条件** show()，不先查 is_visible()：
+            // 那是最后一道保险，宁可多调一次也不能让窗口不出现。
+            // 提前触发也无害 —— 用户看到的是 index.html 里的启动画面，
+            // 等前端就绪后 React 会接管。
+            use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(2));
+                    let _ = window.show();
+                });
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::check_port,
             commands::list_ports,

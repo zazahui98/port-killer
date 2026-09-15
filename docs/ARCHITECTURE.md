@@ -250,32 +250,47 @@ missing capability must disable one optional feature, not the whole application.
 **Edge resizing still works.** tao implements `WM_NCHITTEST` for undecorated but
 resizable windows, so `resizable` and `minWidth` / `minHeight` behave normally.
 
-## Startup: covering the first-paint gap
+## Startup: hiding the window until there is something to show
 
 Any webview-based desktop app has a gap between the window being created and the
 first paint: the webview has to initialise, the HTML has to load, and the JS bundle
 has to parse and run. In this app that gap is roughly 300-600 ms, and a window that
 is visible during it shows nothing but its background colour.
 
-The mitigation is an **inline placeholder in `index.html`**:
+The window is therefore created with `visible: false` and revealed by the frontend
+once React has painted:
 
-```html
-<div id="root"><div class="pk-launch">端口终结者</div></div>
+```ts
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => tryWindowCall((win) => win.show()));
+});
 ```
 
-It is part of the HTML, so it paints as soon as the document parses — well before
-React mounts. The gap then reads as a brief splash rather than as a blank window.
-It carries its own `<style>` block with a `prefers-color-scheme` variant so it
-matches the theme without waiting for `styles.css`. Because it sits inside `#root`,
-React clears it on mount and no cleanup code is needed.
+Two nested `requestAnimationFrame` calls are deliberate. The first fires after React
+commits the DOM; the second fires after the browser has actually painted a frame.
+A single `rAF` can still reveal the window before anything is on screen.
 
-**Creating the window with `visible: false` and revealing it from the frontend is
-not used.** That approach removes the gap entirely in principle, but it depends on
-the reveal reliably happening: if `show()` fails, the result is a window that never
-appears at all, which is far worse than a brief flash. It also makes the app's
-first visible frame depend on the frontend loading successfully. The placeholder
-approach has no such failure mode — the window is visible from the start, and the
-worst case is that the placeholder stays on screen a little longer.
+### The splash screen
+
+`index.html` carries a self-contained splash: a centred mark and the app name, with
+its own `<style>` block and a `prefers-color-scheme` variant. It lives inside `#root`,
+so React clears it on mount and no cleanup code is needed.
+
+Its job is to make the failure mode graceful. `lib.rs` reveals the window
+unconditionally after 2 seconds, so a frontend that fails to load cannot leave an
+invisible window behind — and if that fallback fires, what the user sees is the
+splash rather than a blank window. Firing early is harmless for the same reason:
+the splash is a legitimate thing to look at until React takes over.
+
+The fallback calls `show()` **without** checking `is_visible()` first. A guard there
+would make the safety net depend on the very thing it is protecting against.
+
+> **Verification note.** Window visibility cannot be read reliably from outside the
+> process on Windows. `Process.MainWindowHandle` and `MainWindowTitle` are not a
+> sound proxy here: with this window they return a handle whose title is empty even
+> while the window is on screen, and a control comparison against a decorated window
+> (Notepad) does not transfer, because the app's window is undecorated. Verify from
+> inside the app, or by looking at it.
 
 ## Verification scope
 

@@ -12,16 +12,17 @@
     -->
     <style>
       /*
-        启动占位界面。
+        启动画面。
 
-        窗口一创建就是可见的，而 WebView2 初始化 + 加载 JS + React 挂载需要
-        几百毫秒。这段时间窗口里没有任何内容，只能显示底色 —— 看上去就是
-        「开屏黑屏」。
+        窗口以 visible: false 创建，正常情况下前端画完首帧才显示它，
+        这段内容几乎不会被看到。它的作用有两个：
 
-        这段内联标记在 index.html 解析时就会绘制，比 React 首次绘制早得多，
-        于是那段时间用户看到的是应用标识而不是一个空窗口。
+        1. 兜底可见 —— 若前端加载失败，Rust 侧超时后会把窗口显示出来，
+           此时用户看到的是这个画面，而不是一个空白窗口。
+        2. 万一前端比预期慢，窗口提前显示，看到的也是一个像样的启动画面。
 
-        React 挂载时会清空 #root，这段内容随之消失，不需要清理代码。
+        标记直接写在 index.html 里，解析时即可绘制；样式也内联，
+        不必等 styles.css。React 挂载会清空 #root，这段内容自动消失。
       */
       html,
       body {
@@ -31,23 +32,70 @@
       .pk-launch {
         position: fixed;
         inset: 0;
-        display: grid;
-        place-items: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
         background: #0b0c0e;
-        color: #e9ebef;
         font: 500 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
         letter-spacing: -0.01em;
+        animation: pk-launch-in 200ms ease-out both;
+      }
+      .pk-launch-mark {
+        display: grid;
+        place-items: center;
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        background: rgba(110, 168, 254, 0.12);
+      }
+      .pk-launch-mark svg {
+        fill: #6ea8fe;
+      }
+      .pk-launch-name {
+        color: #9ba1ab;
+      }
+      @keyframes pk-launch-in {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pk-launch {
+          animation: none;
+        }
       }
       @media (prefers-color-scheme: light) {
         .pk-launch {
           background: #f6f7f8;
-          color: #16181c;
+        }
+        .pk-launch-mark {
+          background: rgba(37, 99, 235, 0.1);
+        }
+        .pk-launch-mark svg {
+          fill: #2563eb;
+        }
+        .pk-launch-name {
+          color: #5c6169;
         }
       }
     </style>
   </head>
   <body>
-    <div id="root"><div class="pk-launch">端口终结者</div></div>
+    <div id="root">
+      <div class="pk-launch">
+        <div class="pk-launch-mark">
+          <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+            <polygon points="13 2 4 13.5 11 13.5 10.5 22 20 10.5 13 10.5" />
+          </svg>
+        </div>
+        <div class="pk-launch-name">端口终结者</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
