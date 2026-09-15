@@ -250,42 +250,32 @@ missing capability must disable one optional feature, not the whole application.
 **Edge resizing still works.** tao implements `WM_NCHITTEST` for undecorated but
 resizable windows, so `resizable` and `minWidth` / `minHeight` behave normally.
 
-## Window reveal on startup
+## Startup: covering the first-paint gap
 
 Any webview-based desktop app has a gap between the window being created and the
 first paint: the webview has to initialise, the HTML has to load, and the JS bundle
-has to parse and run. In this app that gap is roughly 300–600 ms, and a window that
-is visible during it shows nothing but its background colour — which reads as a
-"black flash" on launch.
+has to parse and run. In this app that gap is roughly 300-600 ms, and a window that
+is visible during it shows nothing but its background colour.
 
-The window is therefore created with `visible: false` and revealed by the frontend:
+The mitigation is an **inline placeholder in `index.html`**:
 
-```ts
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => tryWindowCall((win) => win.show()));
-});
+```html
+<div id="root"><div class="pk-launch">端口终结者</div></div>
 ```
 
-Two nested `requestAnimationFrame` calls are deliberate. The first fires after React
-commits the DOM; the second fires after the browser has actually painted a frame.
-A single `rAF` can still reveal the window before anything is on screen.
+It is part of the HTML, so it paints as soon as the document parses — well before
+React mounts. The gap then reads as a brief splash rather than as a blank window.
+It carries its own `<style>` block with a `prefers-color-scheme` variant so it
+matches the theme without waiting for `styles.css`. Because it sits inside `#root`,
+React clears it on mount and no cleanup code is needed.
 
-**A hidden window that is never shown is worse than a flash**, so `lib.rs` reveals
-the window unconditionally after 3 seconds. That path also covers a frontend that
-fails to load, in which case the inline placeholder in `index.html` is what the user
-sees — an intentional-looking mark rather than an empty frame. The placeholder sits
-inside `#root`, so React clears it on mount and no cleanup code is needed.
-
-Measured with a temporary probe polling `is_visible()` from inside the app:
-
-| Configuration | `is_visible` at setup | First visible |
-| --- | --- | --- |
-| `show()` disabled | `false` | 5343 ms (fallback only) |
-| `show()` enabled | `true` | immediately, i.e. revealed by the frontend |
-
-> Note for anyone verifying this: `Process.MainWindowHandle` returns a non-zero
-> handle for **hidden** windows, so an external process probe cannot measure window
-> visibility. Read `is_visible()` from inside the app instead.
+**Creating the window with `visible: false` and revealing it from the frontend is
+not used.** That approach removes the gap entirely in principle, but it depends on
+the reveal reliably happening: if `show()` fails, the result is a window that never
+appears at all, which is far worse than a brief flash. It also makes the app's
+first visible frame depend on the frontend loading successfully. The placeholder
+approach has no such failure mode — the window is visible from the start, and the
+worst case is that the placeholder stays on screen a little longer.
 
 ## Verification scope
 

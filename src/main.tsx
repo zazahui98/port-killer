@@ -4,7 +4,6 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { ToastProvider } from "./components/ui/Toast";
 import { applyTheme, readStoredTheme } from "./utils/theme";
-import { tryWindowCall } from "./utils/window";
 // 副作用导入：初始化 i18next 并绑定 React。必须在渲染之前完成，
 // 否则首帧会先渲染出 key 本身再被替换成文案。
 import i18n from "./i18n";
@@ -45,23 +44,3 @@ createRoot(container).render(
     </ToastProvider>
   </StrictMode>,
 );
-
-/**
- * 首帧画完后再显示窗口。
- *
- * 窗口在 `tauri.conf.json` 里是 `visible: false`。因为 WebView2 初始化、
- * 加载 JS、React 挂载都需要时间，若窗口一开始就可见，用户会先看到一个
- * 只有底色、没有任何内容的空窗口 —— 也就是「开屏黑屏」。
- *
- * 这里用**双 rAF**：第一个 rAF 在 React 提交 DOM 之后触发，
- * 第二个 rAF 才是浏览器真正绘制完一帧的时刻。只等一个 rAF 仍然可能
- * 在窗口显示时内容还没上屏。
- *
- * 失败时静默忽略 —— Rust 侧还有一个超时兜底（见 `lib.rs`），
- * 不会出现窗口永远不显示的情况。
- */
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    tryWindowCall((win) => win.show());
-  });
-});

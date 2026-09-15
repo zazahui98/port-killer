@@ -22,7 +22,6 @@
         "center": true,
         "decorations": false,
         "shadow": true,
-        "visible": false,
         "focus": true,
         "backgroundColor": "#0b0c0e",
         "dragDropEnabled": false,
@@ -41,6 +40,10 @@
     "active": true,
     "targets": "all",
     "category": "DeveloperTool",
+    "publisher": "zazahui98",
+    "homepage": "https://github.com/zazahui98/port-killer",
+    "copyright": "Copyright © 2026 zazahui98",
+    "license": "MIT",
     "shortDescription": "快速释放被占用的开发端口",
     "longDescription": "端口终结者（Port Killer）是一款面向开发者的轻量级端口管理工具：输入端口 → 查看占用进程 → 一键终结 → 端口释放。完全本地运行，不联网。",
     "icon": [
