@@ -3,18 +3,21 @@ use std::sync::OnceLock;
 use crate::error::PortResult;
 use crate::process::PortProcess;
 
-/// `lsof -Fpc` 的字段解析器 —— 不依赖任何平台 API，因此放成独立模块，
-/// 让 macOS 之外也能跑它的单元测试（参见 `lsof_parser::tests`）。
-pub mod lsof_parser;
-
-/// TCP 状态规范化 —— 同样是纯逻辑，三平台共用且在任何平台都能被测试。
-pub mod state;
-
-/// Linux `/proc/net/*` 的纯解析逻辑 —— 不带平台门控，测试在任何平台都能跑。
-pub mod proc_net;
-
-/// 「原始 socket → 聚合后的 PortProcess 列表」的公共管线，三平台共用。
+// 下面四个模块是平台无关的纯逻辑，刻意**不带 `#[cfg(target_os)]`**。
+//
+// Rust 只编译 cfg 允许的部分：被门控的模块（连同它内部的测试）在其它平台上
+// 根本不参与编译，那些测试不是失败而是没跑。本项目的主力验证平台是 Windows，
+// 所以放进平台门控里的解析逻辑等于无人验证。抽成无门控模块后，
+// 同一套测试在所有平台都执行。
+//
+// - `lsof_parser`  lsof -Fpc 字段解析
+// - `state`        TCP 状态规范化
+// - `proc_net`     Linux /proc/net/* 解析
+// - `aggregate`    原始 socket → PortProcess 的聚合管线
 pub mod aggregate;
+pub mod lsof_parser;
+pub mod proc_net;
+pub mod state;
 
 #[cfg(target_os = "windows")]
 pub mod windows;

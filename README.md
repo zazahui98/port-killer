@@ -40,6 +40,8 @@ Port Killer turns that into one input box and one button.
 | **Force kill** | Only offered *after* a normal kill fails, and it requires a **separate second confirmation**. Never the default button |
 | **Port list** | A full-window drawer listing every port in use. Defaults to **listening sockets only** — that's what "in use" means — with toggles for all connections and ownerless sockets |
 | **Always on top** | Keep it above your terminal, since that's where you read the error |
+| **Configurable home screen** | Hide the common-ports row if you'd rather have just the input box. Always-on-top lives on the title bar instead of in settings |
+| **No startup flash** | The window stays hidden until there's something to show, so you never see an empty frame |
 | **Bilingual** | English and 简体中文, follows your system language, switchable in settings |
 | **Themes** | System / Dark / Light. The window chrome follows the app theme, not the OS |
 | **Keyboard** | <kbd>Enter</kbd> to check · <kbd>Esc</kbd> to dismiss · <kbd>Ctrl/⌘</kbd>+<kbd>K</kbd> to focus the input |
