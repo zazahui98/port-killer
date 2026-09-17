@@ -119,10 +119,14 @@ export function PortListDrawer({
         抽屉面板：从右缘外滑到贴边，占大部分宽度、左侧留缝露出（已虚化的）主界面，
         这才像「抽屉」而不是整页覆盖。它盖住了标题栏，所以顶栏承接拖动与双击。
         缓动选 iOS 风格的 ease-out-quint：起步快、收尾稳，观感更优雅。
+
+        宽度按断点分三档：端口列表是表格型内容，窗口越宽越应该给更多列位，
+        否则最大化后抽屉仍是一条窄条。上限保留，避免宽屏下把主界面挤没。
       */}
       <aside
         className={[
           "absolute inset-y-0 right-0 z-40 flex w-[86%] max-w-[560px] flex-col border-l border-line bg-bg",
+          "md:max-w-[720px] xl:max-w-[880px]",
           "shadow-[-16px_0_40px_-16px_rgba(0,0,0,0.4)] will-change-transform",
           "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
           open ? "translate-x-0" : "pointer-events-none translate-x-full",
@@ -138,7 +142,7 @@ export function PortListDrawer({
           onMouseDown={onStartDrag}
           onDoubleClick={onToggleMaximize}
         >
-          <div className="mx-auto flex w-full max-w-[560px] items-center justify-between gap-3">
+          <div className="flex w-full items-center justify-between gap-3">
             <h2 className="text-[14px] font-semibold text-fg">{t("list.title")}</h2>
             <div className="flex items-center gap-0.5">
               <button
@@ -170,7 +174,7 @@ export function PortListDrawer({
 
         {/* 筛选 */}
         <div className="shrink-0 border-b border-line px-4 py-2.5">
-          <div className="mx-auto w-full max-w-[560px]">
+          <div className="w-full">
             <div className="flex h-8 items-center gap-2 rounded-lg border border-line bg-surface px-2.5 focus-within:border-accent/60">
               <Search size={13} className="shrink-0 text-fg-subtle" aria-hidden />
               <input
@@ -237,7 +241,7 @@ export function PortListDrawer({
               {listeningOnly ? t("list.emptyListening") : t("list.empty")}
             </Placeholder>
           ) : (
-            <ul className="mx-auto flex w-full max-w-[560px] flex-col">
+            <ul className="flex w-full flex-col">
               {rows.map((row) => (
                 <PortListRow
                   key={`${row.protocol ?? "tcp"}-${row.port}-${row.pid}`}

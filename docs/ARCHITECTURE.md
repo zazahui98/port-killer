@@ -250,6 +250,20 @@ missing capability must disable one optional feature, not the whole application.
 **Edge resizing still works.** tao implements `WM_NCHITTEST` for undecorated but
 resizable windows, so `resizable` and `minWidth` / `minHeight` behave normally.
 
+**The layout grows with the window.** There is no maximum window size, so a single
+fixed content width would leave hundreds of pixels empty on each side once maximised.
+Both the content column and the drawer therefore step up at the `md` and `xl`
+breakpoints rather than sitting at one fixed cap:
+
+| | 480 px window | 900 px | 1400 px+ |
+| --- | --- | --- | --- |
+| Content column | 560 px | 680 px | 760 px |
+| Port list drawer | 86% | 720 px | 880 px |
+
+Below 560 px the column is limited by the viewport, so the default 480 px window is
+unaffected. The caps stay in place because a full-width input box and a full-width
+process card are harder to read than a centred column.
+
 ## Startup: hiding the window until there is something to show
 
 Any webview-based desktop app has a gap between the window being created and the

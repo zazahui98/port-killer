@@ -224,11 +224,13 @@ export function App() {
       {/* 可滚动主区域 */}
       <main className="min-h-0 flex-1 overflow-y-auto pb-5">
         {/*
-          内容列居中并限宽。
-          窗口已放开最大尺寸（为了「最大化」名副其实），因此在宽窗口下
-          必须把内容收成一条可读的列，否则输入框和卡片会横跨整个屏幕。
+          内容列居中并限宽，但随窗口放宽。
+          窗口放开了最大尺寸（为了「最大化」名副其实），若限宽固定成 560px，
+          最大化后两侧会各空出几百像素 —— 窗口变大了，内容却没跟上。
+          所以按断点分三档：窗口越宽，列越宽，同时保留上限，
+          避免输入框和卡片横跨整个屏幕。
         */}
-        <div className="mx-auto w-full max-w-[560px]">
+        <div className="mx-auto w-full max-w-[560px] md:max-w-[680px] xl:max-w-[760px]">
           <PortInput
             ref={inputRef}
             value={state.input}
