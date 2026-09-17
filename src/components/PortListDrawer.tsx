@@ -306,23 +306,32 @@ function PortListRow({
             )}
           </div>
 
-          <div className="flex items-baseline gap-2 text-[12px]">
-            <span className="truncate-1 font-mono text-fg">{row.processName}</span>
-            <span className="shrink-0 font-mono text-[11px] text-fg-subtle">
-              PID {row.pid}
-            </span>
-          </div>
+          {/*
+            窄窗口下这两行上下堆叠；窗口够宽时并排。
+            抽屉变宽后若仍堆叠，每行会在文字与右侧终结按钮之间留下大片空白；
+            并排则把这份空间换成更完整的可执行路径，顺带压低行高。
+          */}
+          <div className="flex flex-col gap-1 md:flex-row md:items-baseline md:gap-3">
+            <div className="flex items-baseline gap-2 text-[12px] md:min-w-0">
+              <span className="truncate-1 font-mono text-fg">{row.processName}</span>
+              <span className="shrink-0 font-mono text-[11px] text-fg-subtle">
+                PID {row.pid}
+              </span>
+            </div>
 
-          {(row.localAddress || path) && (
-            <p
-              className="truncate-1 font-mono text-[11px] text-fg-subtle"
-              title={[row.localAddress, path].filter(Boolean).join("  ")}
-            >
-              {row.localAddress && <span>{row.localAddress}</span>}
-              {row.localAddress && path && <span className="mx-1.5 opacity-40">·</span>}
-              {path}
-            </p>
-          )}
+            {(row.localAddress || path) && (
+              <p
+                className="truncate-1 font-mono text-[11px] text-fg-subtle md:min-w-0 md:flex-1"
+                title={[row.localAddress, path].filter(Boolean).join("  ")}
+              >
+                {row.localAddress && <span>{row.localAddress}</span>}
+                {row.localAddress && path && (
+                  <span className="mx-1.5 opacity-40">·</span>
+                )}
+                {path}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* 右侧：终结 */}

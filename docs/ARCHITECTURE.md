@@ -264,6 +264,13 @@ Below 560 px the column is limited by the viewport, so the default 480 px window
 unaffected. The caps stay in place because a full-width input box and a full-width
 process card are harder to read than a centred column.
 
+The port list rows adapt too. Below `md` each row stacks three lines (port and state,
+process and PID, address and path); from `md` up the last two sit side by side. Without
+that, a wider drawer only widened the empty space between the text and the trailing kill
+button - measured at 676 px of a 880 px row. Laying them out in a line cuts the largest
+gap to about 300 px and the row height from ~60 px to ~39 px, so roughly half again as
+many rows fit on screen.
+
 ## Startup: hiding the window until there is something to show
 
 Any webview-based desktop app has a gap between the window being created and the
