@@ -9,14 +9,16 @@
 //! 而不只是「代码能编译」。
 
 use std::net::TcpListener;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 use port_killer_lib::platform::provider;
 use port_killer_lib::PortError;
 
-/// 子进程角色标记：带上这个环境变量启动测试二进制时，它会变成一个「端口占用者」
-const CHILD_PORT_ENV: &str = "PORT_KILLER_CHILD_PORT";
+/// 子进程角色标记：带上这个环境变量启动测试二进制时，它会变成一个「端口占用者」。
+/// 值是「回写端口号的文件路径」。
+const CHILD_PORT_FILE_ENV: &str = "PORT_KILLER_CHILD_PORT_FILE";
 
 const WAIT_STEP: Duration = Duration::from_millis(100);
 const WAIT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -140,19 +142,21 @@ fn killing_a_nonexistent_pid_is_reported_as_process_not_found() {
 #[test]
 fn end_to_end_release_flow() {
     // --- 子进程角色：绑定端口并一直挂着，直到被父进程终结 ---
-    if let Ok(port_str) = std::env::var(CHILD_PORT_ENV) {
-        let port: u16 = port_str.parse().expect("子进程端口号非法");
-        let _listener = TcpListener::bind(("127.0.0.1", port)).expect("子进程绑定端口失败");
+    //
+    // 端口由子进程自己挑：先 bind(0) 让系统分配，再把实际端口回写给父进程。
+    // 若改成「父进程先挑好再传进来」，从父进程释放端口到子进程 bind 之间就存在
+    // 被其它进程抢占的窗口，子进程会绑定失败 —— 而父进程看到的是「子进程没有
+    // 出现在占用列表里」，报错指向的原因与真实原因不符。
+    if let Ok(port_file) = std::env::var(CHILD_PORT_FILE_ENV) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("子进程绑定端口失败");
+        let port = listener.local_addr().expect("无法读取本地地址").port();
+        std::fs::write(&port_file, port.to_string()).expect("子进程无法回写端口号");
         std::thread::sleep(Duration::from_secs(120));
         return;
     }
 
     // --- 父进程角色 ---
-    let port = {
-        let l = TcpListener::bind("127.0.0.1:0").expect("无法挑选空闲端口");
-        l.local_addr().expect("无法读取本地地址").port()
-    };
-
+    let port_file = temp_port_file();
     let exe = std::env::current_exe().expect("无法定位测试二进制");
     let mut child = Command::new(exe)
         .args([
@@ -161,7 +165,7 @@ fn end_to_end_release_flow() {
             "--nocapture",
             "--test-threads=1",
         ])
-        .env(CHILD_PORT_ENV, port.to_string())
+        .env(CHILD_PORT_FILE_ENV, &port_file)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -169,6 +173,7 @@ fn end_to_end_release_flow() {
         .expect("无法启动占用端口的子进程");
 
     let child_pid = child.id();
+    let port = wait_for_reported_port(&port_file);
 
     // 等子进程真正绑定上端口
     let occupied = wait_until(|| {
@@ -197,6 +202,7 @@ fn end_to_end_release_flow() {
     });
 
     let _ = child.wait();
+    let _ = std::fs::remove_file(&port_file);
 
     assert!(released, "终结后端口 {port} 应当被释放");
 }
@@ -204,6 +210,25 @@ fn end_to_end_release_flow() {
 /* ------------------------------------------------------------------
 辅助
 ------------------------------------------------------------------ */
+
+/// 子进程回写端口号用的临时文件路径。带进程号，避免并行运行时互相覆盖。
+fn temp_port_file() -> PathBuf {
+    std::env::temp_dir().join(format!("port-killer-test-port-{}.txt", std::process::id()))
+}
+
+/// 等待子进程回写它实际绑定的端口号
+fn wait_for_reported_port(port_file: &Path) -> u16 {
+    let deadline = Instant::now() + WAIT_TIMEOUT;
+    while Instant::now() < deadline {
+        if let Ok(text) = std::fs::read_to_string(port_file) {
+            if let Ok(port) = text.trim().parse::<u16>() {
+                return port;
+            }
+        }
+        std::thread::sleep(WAIT_STEP);
+    }
+    panic!("子进程未在 {WAIT_TIMEOUT:?} 内回写端口号");
+}
 
 /// 启动一个「什么都不做、一直挂着」的真实进程，用于验证终结能力。
 ///

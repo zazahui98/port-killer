@@ -8,6 +8,7 @@
 //! 全部使用真实系统资源，没有任何 mock。
 
 use std::net::TcpListener;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -15,8 +16,10 @@ use port_killer_lib::commands;
 use port_killer_lib::PortError;
 use tauri::async_runtime::block_on;
 
-/// 子进程角色标记（与 `port_lookup.rs` 分开命名，避免并行执行时互相干扰）
-const CHILD_PORT_ENV: &str = "PORT_KILLER_CMD_CHILD_PORT";
+/// 子进程角色标记（与 `port_lookup.rs` 分开命名，避免并行执行时互相干扰）。
+/// 值是「回写端口号的文件路径」—— 带上它启动测试二进制，该进程就会绑定一个
+/// 端口并一直挂着。
+const CHILD_PORT_FILE_ENV: &str = "PORT_KILLER_CMD_CHILD_PORT_FILE";
 
 const WAIT_STEP: Duration = Duration::from_millis(100);
 const WAIT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -100,17 +103,24 @@ fn killing_a_nonexistent_pid_is_reported_as_process_not_found() {
 #[test]
 fn acceptance_flow_through_the_command_layer() {
     // --- 子进程角色：绑定端口并一直挂着，直到被父进程终结 ---
-    if let Ok(port_str) = std::env::var(CHILD_PORT_ENV) {
-        let port: u16 = port_str.parse().expect("子进程端口号非法");
-        let _listener = TcpListener::bind(("127.0.0.1", port)).expect("子进程绑定端口失败");
+    //
+    // 端口由子进程自己挑：先 bind(0) 让系统分配，再把实际端口回写给父进程。
+    // 若改成「父进程先挑好再传进来」，从父进程释放端口到子进程 bind 之间就存在
+    // 被其它进程抢占的窗口，子进程会绑定失败 —— 而父进程看到的是「子进程没有
+    // 出现在占用列表里」，报错指向的原因与真实原因不符。
+    if let Ok(port_file) = std::env::var(CHILD_PORT_FILE_ENV) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("子进程绑定端口失败");
+        let port = listener.local_addr().expect("无法读取本地地址").port();
+        std::fs::write(&port_file, port.to_string()).expect("子进程无法回写端口号");
         std::thread::sleep(Duration::from_secs(120));
         return;
     }
 
     // --- 父进程角色 ---
-    let port = free_port();
-    let child = spawn_port_holder(port);
+    let port_file = temp_port_file();
+    let child = spawn_port_holder(&port_file);
     let child_pid = child.id();
+    let port = wait_for_reported_port(&port_file);
 
     // 步骤 1：输入端口 → 查到占用它的进程
     let occupied = wait_until(|| {
@@ -146,6 +156,7 @@ fn acceptance_flow_through_the_command_layer() {
 
     let mut child = child;
     let _ = child.wait();
+    let _ = std::fs::remove_file(&port_file);
 
     assert!(released, "终结后端口 {port} 应当被释放");
 }
@@ -238,17 +249,25 @@ fn list_ports_never_fails_and_every_row_is_displayable() {
 辅助
 ------------------------------------------------------------------ */
 
-/// 挑一个当前空闲的端口。
+/// 挑一个当前空闲的端口，只用于「查一个没人占用的端口」这类断言。
 ///
-/// 注意这里必然存在「释放后又被抢占」的微小窗口，因此断言都写成
-/// 「本进程 / 目标进程不在结果里」，而不是「结果一定为空」。
+/// 需要让子进程真正占用某个端口时**不要**用它再传出去：从释放到子进程 bind
+/// 之间存在被抢占的窗口，见 `temp_port_file` 的说明。
 fn free_port() -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").expect("无法挑选空闲端口");
     listener.local_addr().expect("无法读取本地地址").port()
 }
 
+/// 子进程回写端口号用的临时文件路径。带进程号，避免并行运行时互相覆盖。
+fn temp_port_file() -> PathBuf {
+    std::env::temp_dir().join(format!("port-killer-test-port-{}.txt", std::process::id()))
+}
+
 /// 以「端口占用者」的身份重新启动本测试二进制。
-fn spawn_port_holder(port: u16) -> Child {
+///
+/// 端口不在这里指定：子进程自己 bind(0) 挑，再回写到 `port_file`，
+/// 由 `wait_for_reported_port` 读出。
+fn spawn_port_holder(port_file: &Path) -> Child {
     let exe = std::env::current_exe().expect("无法定位测试二进制");
     Command::new(exe)
         .args([
@@ -257,12 +276,26 @@ fn spawn_port_holder(port: u16) -> Child {
             "--nocapture",
             "--test-threads=1",
         ])
-        .env(CHILD_PORT_ENV, port.to_string())
+        .env(CHILD_PORT_FILE_ENV, port_file)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .expect("无法启动占用端口的子进程")
+}
+
+/// 等待子进程回写它实际绑定的端口号
+fn wait_for_reported_port(port_file: &Path) -> u16 {
+    let deadline = Instant::now() + WAIT_TIMEOUT;
+    while Instant::now() < deadline {
+        if let Ok(text) = std::fs::read_to_string(port_file) {
+            if let Ok(port) = text.trim().parse::<u16>() {
+                return port;
+            }
+        }
+        std::thread::sleep(WAIT_STEP);
+    }
+    panic!("子进程未在 {WAIT_TIMEOUT:?} 内回写端口号");
 }
 
 /// 轮询等待某个条件成立
