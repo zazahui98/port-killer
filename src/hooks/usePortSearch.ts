@@ -127,6 +127,74 @@ export type KillOutcome =
   | { kind: "partial"; port: number; remaining: number }
   | { kind: "failed"; error: PortError };
 
+/** 终结后等待端口释放的轮询参数（约 1.2s 窗口，覆盖系统回收 socket 的延迟） */
+const RELEASE_POLL_ATTEMPTS = 8;
+const RELEASE_POLL_INTERVAL_MS = 150;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** 端口复查结果 */
+type RecheckResult =
+  | { status: "released" }
+  | { status: "occupied"; processes: PortProcess[] }
+  | { status: "error"; error: PortError };
+
+/** 单次复查端口占用（不做重试） */
+async function probePort(port: number): Promise<RecheckResult> {
+  try {
+    const info = await checkPort(port);
+    return info.processes.length === 0
+      ? { status: "released" }
+      : { status: "occupied", processes: info.processes };
+  } catch (raw) {
+    return { status: "error", error: toPortError(raw) };
+  }
+}
+
+/**
+ * 终结后复查端口，直到确认释放或到达最大尝试次数。
+ *
+ * 进程被终结后，操作系统回收 socket 需要一点时间；在那之前
+ * `check_port` 仍可能把残留 socket 列出来。只查一次很容易在这个瞬时
+ * 窗口内误判为「端口仍被占用」，进而引导用户重复终结、撞上对已退出
+ * 进程的权限错误。这里带间隔重试若干次来吸收该窗口。
+ *
+ * killedPid 用于区分两种情况：只要残留列表里还有「刚被终结的进程」，
+ * 就继续等待其 socket 被回收；一旦该进程已消失、端口却被别的进程占着，
+ * 说明是真正的多进程占用，立即返回、不再等待。
+ */
+async function waitPortReleased(
+  port: number,
+  killedPid: number,
+): Promise<RecheckResult> {
+  let last: RecheckResult = {
+    status: "error",
+    error: new PortKillerError("UNKNOWN", "复查端口失败"),
+  };
+
+  for (let attempt = 0; attempt < RELEASE_POLL_ATTEMPTS; attempt++) {
+    last = await probePort(port);
+
+    if (last.status === "released") return last;
+
+    if (
+      last.status === "occupied" &&
+      !last.processes.some((p) => p.pid === killedPid)
+    ) {
+      // 被终结的进程已被系统清理，端口却被别的进程占用 —— 无需再等
+      return last;
+    }
+
+    if (attempt < RELEASE_POLL_ATTEMPTS - 1) {
+      await sleep(RELEASE_POLL_INTERVAL_MS);
+    }
+  }
+
+  return last;
+}
+
 export interface PortSearchApi {
   state: PortSearchState;
   setInput: (value: string) => void;
@@ -208,30 +276,48 @@ export function usePortSearch(): PortSearchApi {
       await killProcess(pid, force);
     } catch (raw) {
       const error = toPortError(raw);
+
+      // 竞态兜底：本次终结报错，但进程可能已被「上一次」终结带走
+      // （重复点击时进程其实已退出，对一个正在退出/已退出的进程调用
+      //  系统接口会返回权限类错误）。复查一次端口，若确实已空，
+      //  就按终结成功处理，避免「端口明明空了却报权限不足」的误导。
+      const probe = await probePort(port);
+      if (probe.status === "released") {
+        dispatch({ type: "KILL_RELEASED", port });
+        return { kind: "released", port };
+      }
+
       dispatch({ type: "KILL_FAILED", error });
       return { kind: "failed", error };
     }
 
     // 终结成功后必须回到系统再确认一次：进程可能瞬间退出，
-    // 也可能同一端口上还有别的进程。
-    try {
-      const info = await checkPort(port);
-      if (info.processes.length === 0) {
-        dispatch({ type: "KILL_RELEASED", port });
-        return { kind: "released", port };
-      }
-      dispatch({ type: "KILL_PARTIAL", processes: info.processes });
-      return { kind: "partial", port, remaining: info.processes.length };
-    } catch (raw) {
-      // 注意这里是「复查失败」，不是「终结失败」。
-      // 进程很可能已经被终结了，我们只是无法确认端口当前状态，
-      // 所以走 CHECK_FAILED（清空进程列表 → 展示错误面板 + 重新检查），
-      // 而不是 KILL_FAILED —— 后者会保留旧进程列表，
-      // 让界面错误地断言「端口仍被占用」。
-      const error = toPortError(raw);
-      dispatch({ type: "CHECK_FAILED", error });
-      return { kind: "failed", error };
+    // 也可能同一端口上还有别的进程。系统回收 socket 有延迟，
+    // 因此这里带间隔轮询，直到端口真正空出来（或确认是别的进程占用）。
+    const recheck = await waitPortReleased(port, pid);
+
+    // 复查期间用户可能已切换端口 / 重置界面，此时只回报结果、不再改动状态
+    const stillCurrent = portRef.current === port;
+
+    if (recheck.status === "released") {
+      if (stillCurrent) dispatch({ type: "KILL_RELEASED", port });
+      return { kind: "released", port };
     }
+
+    if (recheck.status === "occupied") {
+      if (stillCurrent) {
+        dispatch({ type: "KILL_PARTIAL", processes: recheck.processes });
+      }
+      return { kind: "partial", port, remaining: recheck.processes.length };
+    }
+
+    // 注意这里是「复查失败」，不是「终结失败」。
+    // 进程很可能已经被终结了，我们只是无法确认端口当前状态，
+    // 所以走 CHECK_FAILED（清空进程列表 → 展示错误面板 + 重新检查），
+    // 而不是 KILL_FAILED —— 后者会保留旧进程列表，
+    // 让界面错误地断言「端口仍被占用」。
+    if (stillCurrent) dispatch({ type: "CHECK_FAILED", error: recheck.error });
+    return { kind: "failed", error: recheck.error };
   }, []);
 
   const reset = useCallback(() => {
